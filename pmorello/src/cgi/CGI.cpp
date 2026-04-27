@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "CGI.hpp"
+#include "../pmorello/inc/CGI/CGI.hpp"
 
 CGI::CGI() : _chEnv(NULL), _args(NULL), _exitStatus(0), _CGIpid(-1) {}
 

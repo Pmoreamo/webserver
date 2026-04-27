@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "CGI.hpp"
+#include "../pmorello/inc/response/Response.hpp"
 
 Response::Response(const Request &req) : _request(req)
 {
