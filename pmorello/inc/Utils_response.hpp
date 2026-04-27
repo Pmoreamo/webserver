@@ -1,18 +1,20 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   web_server.hpp                                     :+:      :+:    :+:   */
+/*   Utils.hpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: pmorello <pmorello@student.42.fr>          +#+  +:+       +#+        */
+/*   By: marvin <marvin@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/04/14 17:12:35 by pmorello          #+#    #+#             */
-/*   Updated: 2026/04/16 13:08:12 by pmorello         ###   ########.fr       */
+/*   Created: 2026/04/23 10:39:25 by marvin            #+#    #+#             */
+/*   Updated: 2026/04/23 10:39:25 by marvin           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef WEB_SERVER_HPP
-#define WEB_SERVER_HPP
+#ifndef UTILS_RESPONSE_HPP
+#define UTILS_RESPONSE_HPP
 
+#include <iostream>
+#include <string>
 #include "../rmanzana/inc/Request(mock).hpp"
 #include "../rmanzana/inc/parser/ConfigParser.hpp"
 #include "../rmanzana/inc/parser/LocationConfig.hpp"
@@ -21,22 +23,14 @@
 #include "../rmanzana/inc/utils/Utils.hpp"
 #include "../rmanzana/inc/Mime(mock).hpp"
 
-#include "Response.hpp"
-#include "Utils_response.hpp"
-#include "CGI.hpp"
 
-#include <iostream>
-#include <string>
-#include <map>
-#include <vector>
-#include <sys/stat.h>
-#include <fstream>
-#include <sstream>
-#include <algorithm>
-#include <dirent.h>
-#include <sys/types.h>
-#include <cstdint>
-#include <sys/wait.h>
-#include <unistd.h>
+std::string methodToStr(Methods method);
+void findURL(const std::string &urlClient, const std::vector<LocationConfig> &urlLocs, std::string &urlWinner);
+int  validMethods(Methods methods, const LocationConfig *local, short &code);
+bool isDirectory(std::string &_urlDirect);
+bool fileExist(std::string &_urlFile);
+std::string codeToStr(short &code);
+void fillMapCode(std::map<short, std::string> &_mapCode);
+std::string statusCodeToString(short code);
 
 #endif

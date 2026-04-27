@@ -13,7 +13,22 @@
 #ifndef RESPONSE_HPP
 #define RESPONSE_HPP
 
-#include "web_server.hpp"
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <fstream> 
+#include <stdint.h>     
+#include <sys/stat.h>   
+#include <dirent.h>     
+#include "../rmanzana/inc/Request(mock).hpp"
+#include "../rmanzana/inc/parser/ConfigParser.hpp"
+#include "../rmanzana/inc/parser/LocationConfig.hpp"
+#include "../rmanzana/inc/server/Server.hpp"
+#include "../rmanzana/inc/parser/ServerConfig.hpp"
+#include "../rmanzana/inc/utils/Utils.hpp"
+#include "../rmanzana/inc/Mime(mock).hpp"
+
 
 class Response
 {
@@ -28,15 +43,16 @@ class Response
                 bool                    _autoindex; //Interruptor de per mostrar llistat o nomes 1
                 std::string             _contentType;
                 std::string             _contentResponse;
-                int                     _cgiFD[2]; // pipes
 
                 Mime                    _mime;
                 LocationConfig          _location; //copia de Location
                 const Request           &_request; //copia de Request
                 const Server            *_server; //punter al server
                 const ServerConfig      *_serverConfig; //punter a la configuracio del server
-                //CGI cgiObject;
-      
+                CGI                     _cgi;
+
+
+                int buildCGI();
         public:
                 Response(const Request &req);
                 Response(const Response &src);

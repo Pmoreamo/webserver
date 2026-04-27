@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "web_server.hpp"
+#include "CGI.hpp"
 
 Response::Response(const Request &req) : _request(req)
 {
@@ -107,16 +107,18 @@ int Response::buildPath()
     if (urlAcces->getPath().find("cgi-bin") != std::string::npos) 
     {
         _cgiFlag = 1;
-        // return (logica de la preparacio del CGI);
+        _full_path = urlAcces->getRoot() + _request.getPath();
+        return (0);
     }
     _full_path = urlAcces->getRoot() + _request.getPath();
     if (!urlAcces->getCgiExtension().empty()) 
     {
         std::string ext = urlAcces->getCgiExtension();
         if (_full_path.length() >= ext.length() && 
-            _full_path.compare(_full_path.length() - ext.length(), ext.length(), ext) == 0) {
+            _full_path.compare(_full_path.length() - ext.length(), ext.length(), ext) == 0) 
+        {
             _cgiFlag = 1;
-            // return (logica de la preparacio del CGI);
+            return (0);
         }
     }
     if (isDirectory(_full_path)) 
@@ -195,16 +197,7 @@ int Response::buildBody()
         if (_redirectCode != 0 && _redirectCode != 200)
             return (0);
         std::string method_str = methodToStr(_request.getMethods());
-        if (method_str == "GET")
-        {
-            if (readFile())
-            {
-                _redirectCode = 404;
-                buildErrorBody();
-                return (1);
-            }
-        }
-        else if (method_str == "POST" || method_str == "PUT") 
+        if (method_str == "POST" || method_str == "PUT") 
         {
             std::ofstream file(_full_path.c_str(), std::ios::binary);
             if (file.fail()) 
@@ -332,12 +325,14 @@ int Response::buildHtmlIndex()
 
 void Response::buildResponse()
 {
-    if (buildBody())
+    if (buildPath())
         buildErrorBody();
-    if (_cgiFlag)
-        // std::string CGires = cgiObject.getOutput();
-        // _contentResponse = cgiRes; 
-    if (_autoindex)
+    if (_cgiFlag && _redirectCode == 0)
+    {
+        if (_buildCGI())
+            buildErrorBody();
+    }
+    else if (_autoindex)
     {
         if (buildHtmlIndex())
         {
@@ -347,11 +342,17 @@ void Response::buildResponse()
         else
             _redirectCode = 200;
     }
+    else if (_request.getMethods() == GET && _redirectCode == 0)
+    {
+        if (readFile())
+            buildErrorBody();
+    }
     setHeaders();
-    if ((_request.getMethods() == GET || _redirectCode != 200))
-        _contentResponse.append(_body.begin(), _body.end());
+    if (!_body.empty())
+    {
+        _contentResponse.append(reinterpret_cast<char*>(&_body[0]), _body.size());
+    }
 }  
-
 
 void    Response::cutResponse(size_t i)
 {
@@ -366,6 +367,38 @@ void    Response::clear()
     _cgiFlag = 0;
     _autoindex = false;
     _contentLength = 0;
+}
+
+
+int Response::buildCGI()
+{
+    short error_code = 200;
+    std::string bin_path = "";
+    if (_full_path.find(".py") != std::string::npos)
+        bin_path = "/usr/bin/python3";
+    else if (_full_path.find(".sh") != std::string::npos)
+        bin_path = "/bin/bash";
+    else
+        bin_path = "/usr/bin/php-cgi";
+    _cgi.initEnv(const_cast<Request&>(_request), _full_path, bin_path);
+    _cgi.execute(error_code, _request.getBodyString());
+    if (error_code != 200)
+    {
+        _redirectCode = error_code;
+        return (1);
+    }
+    std::string raw_out = _cgi.getOutput();
+    size_t sep = raw_out.find("\r\n\r\n");
+    _body.clear();
+    if (sep != std::string::npos) {
+        std::string content = raw_out.substr(sep + 4);
+        _body.insert(_body.begin(), content.begin(), content.end());
+    } else {
+        _body.insert(_body.begin(), raw_out.begin(), raw_out.end());
+    }
+    _contentLength = _body.size();
+    _redirectCode = 200;
+    return (0);
 }
 
 std::string Response::getResponse() const
