@@ -6,13 +6,13 @@
 /*   By: pmorello <pmorello@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/16 10:37:25 by pmorello          #+#    #+#             */
-/*   Updated: 2026/04/16 13:39:48 by pmorello         ###   ########.fr       */
+/*   Updated: 2026/04/28 10:44:28 by pmorello         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../pmorello/inc/response/Response.hpp"
 
-Response::Response(const Request &req) : _request(req)
+Response::Response(const HTTPRequest &req) : _request(req)
 {
     _full_path = "";    
     _body.clear();
@@ -61,7 +61,6 @@ int Response::buildPath()
 {
     if (!_serverConfig)
     {
-        std::cout << "Error: No hi ha configuracio carregada a la Response " << std::endl;
         _redirectCode = 500;
         return (1);
     }
@@ -88,27 +87,14 @@ int Response::buildPath()
         _redirectCode = 404;
         return (1);
     }
-    if (validMethods(_request.getMethods(), urlAcces,_redirectCode)) 
+    if (validMethods(_request.getMethod(), urlAcces,_redirectCode)) 
     {
-        std::cout << "NOT ALLOWED METHOD " << std::endl;
         return (1);   
     }
-    if (_request.getBodyString().length() > _serverConfig->getClientMaxBodySize()) 
+    if (_request.getBody().length() > _serverConfig->getClientMaxBodySize()) 
     {
         _redirectCode = 413;
         return (1);
-    }
-    if (urlAcces->getRedirectCode() != 0) 
-    {
-        _redirectCode = urlAcces->getRedirectCode();
-        _redirectUrl = urlAcces->getRedirectUrl();
-        return (1);
-    }
-    if (urlAcces->getPath().find("cgi-bin") != std::string::npos) 
-    {
-        _cgiFlag = 1;
-        _full_path = urlAcces->getRoot() + _request.getPath();
-        return (0);
     }
     _full_path = urlAcces->getRoot() + _request.getPath();
     if (!urlAcces->getCgiExtension().empty()) 
@@ -380,7 +366,7 @@ int Response::buildCGI()
         bin_path = "/bin/bash";
     else
         bin_path = "/usr/bin/php-cgi";
-    _cgi.initEnv(const_cast<Request&>(_request), _full_path, bin_path);
+    _cgi.initEnv(const_cast<HTTPRequest&>(_request), _full_path, bin_path);
     _cgi.execute(error_code, _request.getBodyString());
     if (error_code != 200)
     {

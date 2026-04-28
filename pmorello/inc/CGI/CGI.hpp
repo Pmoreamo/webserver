@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   CGI.hpp                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: marvin <marvin@student.42.fr>              +#+  +:+       +#+        */
+/*   By: pmorello <pmorello@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/27 09:52:29 by marvin            #+#    #+#             */
-/*   Updated: 2026/04/27 09:52:29 by marvin           ###   ########.fr       */
+/*   Updated: 2026/04/28 10:25:10 by pmorello         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,7 @@
 #include <unistd.h>     
 #include <cstdlib>     
 #include <cstring>      
-#include "../rmanzana/inc/Request(mock).hpp"
+#include "../davifer2/includes/HTTPRequest.hpp"
 
 class CGI
 {
@@ -43,7 +43,7 @@ class CGI
         ~CGI();
 
         void    setCGIPath(const std::string &path);
-        void    initEnv(Request &req, const std::string &scriptPath, const std::string &binPath);
+        void    initEnv(HTTPRequest &req, const std::string &scriptPath, const std::string &binPath);
         void    execute(short &error_code, const std::string &body);
         void    clear();
 

@@ -6,7 +6,7 @@
 /*   By: pmorello <pmorello@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/14 13:18:16 by pmorello          #+#    #+#             */
-/*   Updated: 2026/04/16 13:14:31 by pmorello         ###   ########.fr       */
+/*   Updated: 2026/04/28 10:44:08 by pmorello         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,14 +20,16 @@
 #include <stdint.h>     
 #include <sys/stat.h>   
 #include <dirent.h>     
-#include "../rmanzana/inc/Request(mock).hpp"
+
+#include "../davifer2/includes/HTTPRequest.hpp"
 #include "../rmanzana/inc/parser/ConfigParser.hpp"
 #include "../rmanzana/inc/parser/LocationConfig.hpp"
 #include "../rmanzana/inc/server/Server.hpp"
 #include "../rmanzana/inc/parser/ServerConfig.hpp"
 #include "../rmanzana/inc/utils/Utils.hpp"
-#include "../rmanzana/inc/Mime(mock).hpp"
-
+#include "../davifer2/includes/MimeTypes.hpp"
+#include "../pmorello/inc/CGI/CGI.hpp"
+#include "../pmorello/inc/response/Utils_response.hpp"
 
 class Response
 {
@@ -43,9 +45,9 @@ class Response
                 std::string             _contentType;
                 std::string             _contentResponse;
 
-                Mime                    _mime;
+                MimeTypes               _mime;
                 LocationConfig          _location; //copia de Location
-                const Request           &_request; //copia de Request
+                const HTTPRequest       &_request; //copia de Request
                 const Server            *_server; //punter al server
                 const ServerConfig      *_serverConfig; //punter a la configuracio del server
                 CGI                     _cgi;
@@ -53,13 +55,14 @@ class Response
 
                 int buildCGI();
         public:
-                Response(const Request &req);
+                Response(const HTTPRequest &req);
                 Response(const Response &src);
                 Response        &operator=(const Response &src);
                 ~Response();
 
                 void    setServer(const Server *serv);
                 void    setServerConfig(const ServerConfig *servConf);
+
 
                 const   std::string     &getFullPath() const;
                 const   std::vector<uint8_t> &getBody() const;

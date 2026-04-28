@@ -1,30 +1,16 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Utils.cpp                                          :+:      :+:    :+:   */
+/*   Utils_response.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: marvin <marvin@student.42.fr>              +#+  +:+       +#+        */
+/*   By: pmorello <pmorello@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/23 10:38:27 by marvin            #+#    #+#             */
-/*   Updated: 2026/04/23 10:38:27 by marvin           ###   ########.fr       */
+/*   Updated: 2026/04/28 10:44:16 by pmorello         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../pmorello/inc/response/Utils_response.hpp"
-
-std::string methodToStr(Methods method) // Canviat a valor per eficiència
-{
-    std::string res = "";
-    if (method == GET) 
-        res = "GET";
-    else if (method == POST) 
-        res = "POST";
-    else if (method == DELETE) 
-        res = "DELETE";
-    else if (method == PUT) 
-        res = "PUT";
-    return (res);
-}
 
 void findURL(const std::string &urlClient, const std::vector<LocationConfig> &urlLocs, std::string &urlWinner)
 {
@@ -42,15 +28,14 @@ void findURL(const std::string &urlClient, const std::vector<LocationConfig> &ur
     }
 }
 
-int  validMethods(Methods methods, const LocationConfig *local, short &code)
+int  validMethods(const std::string  &methods, const LocationConfig *local, short &code)
 {
     const std::vector<std::string> &method = local->getAllowedMethods();
     if (method.empty())
         return (0);
-    std::string method_str = methodToStr(methods);
     for (std::vector<std::string>::const_iterator it = method.begin(); it != method.end(); it++) 
     {
-        if (*it == method_str) 
+        if (*it == methods) 
         {
             return (0);
         }
