@@ -12,7 +12,9 @@
 
 #include "HTTPResponse.hpp"
 
-Response::Response(const HTTPRequest &req) : _request(req)
+
+
+Response::Response()
 {
     _full_path = "";    
     _body.clear();
