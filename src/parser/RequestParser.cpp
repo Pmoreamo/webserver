@@ -8,35 +8,26 @@
 // ─── Constructor / Destructor ────────────────────────────────────────────────
 
 RequestParser::RequestParser()
-	: _state(PARSING_REQUEST_LINE),
-	  _contentLength(0),
-	  _bodyBytesRead(0),
-	  _isChunked(false),
-	  _maxBodySize(DEFAULT_MAX_BODY),
-	  _currentChunkSize(0),
-	  _chunkBytesRead(0),
-	  _totalHeaderSize(0),
-	  _headerCount(0)
+	: _state(PARSING_REQUEST_LINE), _contentLength(0), _bodyBytesRead(0),
+	  _isChunked(false), _maxBodySize(DEFAULT_MAX_BODY), _currentChunkSize(0),
+	  _chunkBytesRead(0), _totalHeaderSize(0), _headerCount(0)
 {
+
 }
 
 RequestParser::~RequestParser()
 {
+
 }
 
 RequestParser::RequestParser(const RequestParser& other)
-	: _state(other._state),
-	  _buffer(other._buffer),
-	  _request(other._request),
-	  _contentLength(other._contentLength),
-	  _bodyBytesRead(other._bodyBytesRead),
-	  _isChunked(other._isChunked),
-	  _maxBodySize(other._maxBodySize),
-	  _currentChunkSize(other._currentChunkSize),
-	  _chunkBytesRead(other._chunkBytesRead),
-	  _totalHeaderSize(other._totalHeaderSize),
-	  _headerCount(other._headerCount)
+	: _state(other._state), _buffer(other._buffer), _request(other._request),
+	  _contentLength(other._contentLength), _bodyBytesRead(other._bodyBytesRead),
+	  _isChunked(other._isChunked), _maxBodySize(other._maxBodySize),
+	  _currentChunkSize(other._currentChunkSize), _chunkBytesRead(other._chunkBytesRead),
+	  _totalHeaderSize(other._totalHeaderSize), _headerCount(other._headerCount)
 {
+	
 }
 
 RequestParser& RequestParser::operator=(const RequestParser& other)

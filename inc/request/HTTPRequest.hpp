@@ -1,56 +1,60 @@
 #ifndef HTTPREQUEST_HPP
-# define HTTPREQUEST_HPP
+#define HTTPREQUEST_HPP
 
-# include <string>
-# include <map>
+#include <string>
+#include <vector>
+#include <map>
+#include <stdint.h>
 
 class HTTPRequest
 {
-public:
-	HTTPRequest();
-	~HTTPRequest();
-	HTTPRequest(const HTTPRequest& other);
-	HTTPRequest& operator=(const HTTPRequest& other);
+	private:
+			std::string							_method;
+			std::string							_uri;
+			std::string							_path;
+			std::string							_queryString;
+			std::string							_httpVersion;
+			std::map<std::string, std::string>	_headers;
+			std::vector<uint8_t>				_body; //string a vector de 8bits
+			int									_errorCode;
+			bool								_isComplete;
 
-	// Getters
-	const std::string&							getMethod() const;
-	const std::string&							getUri() const;
-	const std::string&							getPath() const;
-	const std::string&							getQueryString() const;
-	const std::string&							getHttpVersion() const;
-	const std::map<std::string, std::string>&	getHeaders() const;
-	std::string									getHeader(const std::string& name) const;
-	const std::string&							getBody() const;
-	int											getErrorCode() const;
-	bool										getIsComplete() const;
+	public:
+			HTTPRequest();
+			~HTTPRequest();
+			HTTPRequest(const HTTPRequest& other);
+			HTTPRequest& operator=(const HTTPRequest& other);
 
-	// Setters
-	void	setMethod(const std::string& method);
-	void	setUri(const std::string& uri);
-	void	setPath(const std::string& path);
-	void	setQueryString(const std::string& queryString);
-	void	setHttpVersion(const std::string& version);
-	void	setHeader(const std::string& name, const std::string& value);
-	void	setBody(const std::string& body);
-	void	appendBody(const std::string& data);
-	void	setErrorCode(int code);
-	void	setIsComplete(bool complete);
+			// Getters
+			const std::string							&getMethod() const;
+			const std::string							&getUri() const;
+			const std::string							&getPath() const;
+			const std::string							&getQueryString() const;
+			const std::string							&getHttpVersion() const;
+			const std::map<std::string, std::string>	&getHeaders() const;
+			const std::string							&getHeader(std::string name) const;
+			const std::vector<uint8_t>					&getBody() const;
+			int											getErrorCode() const;
+			bool										getIsComplete() const;
 
-	// Utils
-	bool	hasHeader(const std::string& name) const;
-	bool	shouldKeepAlive() const;
-	void	clear();
+			// Setters
+			void	setMethod(const std::string& method);
+			void	setUri(const std::string& uri);
+			void	setPath(const std::string& path);
+			void	setQueryString(const std::string& queryString);
+			void	setHttpVersion(const std::string& version);
+			void	setHeader(std::string name, const std::string& value);
+			void	setBody(std::vector<uint8_t> body);
+			void	appendBody(const std::string& data);
+			void	setErrorCode(int code);
+			void	setIsComplete(bool complete);
 
-private:
-	std::string							_method;
-	std::string							_uri;
-	std::string							_path;
-	std::string							_queryString;
-	std::string							_httpVersion;
-	std::map<std::string, std::string>	_headers;
-	std::string							_body;
-	int									_errorCode;
-	bool								_isComplete;
+			// Utils
+			bool	hasHeader(const std::string& name) const;
+			bool	shouldKeepAlive() const;
+			void	clear();
+
+
 };
 
 #endif

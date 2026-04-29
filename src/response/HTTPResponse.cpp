@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../pmorello/inc/response/Response.hpp"
+#include "HTTPResponse.hpp"
 
 Response::Response(const HTTPRequest &req) : _request(req)
 {
@@ -401,4 +401,3 @@ size_t  Response::getContentLength()
 {
     return (this->_contentResponse.length());
 }
-

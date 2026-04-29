@@ -4,18 +4,13 @@
 #include <string>
 #include <string>
 #include <sys/stat.h>
-#include
-#include
-#include
-#include
-#include
-#include
-#include
-#include
-#include
-#include
-#include
-#include
+#include "../inc/request/HTTPRequest.hpp"
+#include "../inc/parser/ConfigParser.hpp"
+#include "../inc/request/LocationConfig.hpp"
+#include "../inc/server/Server.hpp"
+#include "../inc/parser/ServerConfig.hpp"
+#include "../inc/mime/MimeTypes.hpp"
+#include "../inc/CGI/CGI.hpp"
 
 
 void            RemoveComments(std::string &fullLine);
@@ -31,5 +26,15 @@ bool            fileExist(std::string &_urlFile);
 std::string     codeToStr(short &code);
 void            fillMapCode(std::map<short, std::string> &_mapCode);
 std::string     statusCodeToString(short code);
+
+//utils response
+void            findURL(const std::string &urlClient, const std::vector<LocationConfig> &urlLocs, std::string &urlWinner);
+int             validMethods(const std::string  &methods, const LocationConfig *local, short &code);
+bool            isDirectory(std::string &_urlDirect);
+bool            fileExist(std::string &_urlFile);
+std::string     codeToStr(short &code);
+void            fillMapCode(std::map<short, std::string> &_mapCode);
+std::string     statusCodeToString(short code);
+
 
 #endif

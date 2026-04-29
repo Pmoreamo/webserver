@@ -21,15 +21,7 @@
 #include <sys/stat.h>   
 #include <dirent.h>     
 
-#include "../davifer2/includes/HTTPRequest.hpp"
-#include "../rmanzana/inc/parser/ConfigParser.hpp"
-#include "../rmanzana/inc/parser/LocationConfig.hpp"
-#include "../rmanzana/inc/server/Server.hpp"
-#include "../rmanzana/inc/parser/ServerConfig.hpp"
-#include "../rmanzana/inc/utils/Utils.hpp"
-#include "../davifer2/includes/MimeTypes.hpp"
-#include "../pmorello/inc/CGI/CGI.hpp"
-#include "../pmorello/inc/response/Utils_response.hpp"
+#include 
 
 class Response
 {
@@ -97,4 +89,6 @@ class Response
 };
 
 #endif
+
+
 

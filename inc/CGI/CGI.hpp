@@ -18,11 +18,11 @@
 #include <map>
 #include <vector>
 #include <sys/types.h>
-#include <sys/wait.h>
+//#include <sys/wait.h>
 #include <unistd.h>     
 #include <cstdlib>     
 #include <cstring>      
-#include "../davifer2/includes/HTTPRequest.hpp"
+#include "../inc/request/HTTPRequest.hpp"
 
 class CGI
 {
