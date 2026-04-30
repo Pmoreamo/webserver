@@ -10,49 +10,51 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef RESPONSE_HPP
-#define RESPONSE_HPP
+#ifndef HTTPRESPONSE_HPP
+#define HTTPRESPONSE_HPP
 
 #include <iostream>
 #include <string>
 #include <vector>
-#include <fstream> 
-#include <stdint.h>     
-#include <sys/stat.h>   
-#include <dirent.h> 
-#include <sstream>   
-
-#include "../request/HTTPRequest.hpp"
-#include "../request/LocationConfig.hpp"
-#include "../server/Server.hpp"
-#include "../parser/ServerConfig.hpp"
-#include "../mime/MimeTypes.hpp"
-#include "../CGI/CGI.hpp"
+#include <map>
+#include <stdint.h>
+#include <sstream>
 #include "../utils/Utils.hpp"
-
-//nova calsse HTTPResponse, les part de dades
-class HTTPResponse
-{
+    
+class HTTPResponse {
         private:
                 short                                   _statusCode;
-                std::string                             _statusMsg;
                 std::string                             _httpVersion;
                 std::map<std::string, std::string>      _headers;
-                std::vector<char*>                      _body;
+                std::vector<uint8_t>                      _body;
                 std::string                             _fullResponse;
+
         public:
                 HTTPResponse();
-                HTTPResponse(const HTTPResponse &other);
-                HTTPResponse    &operator=(const HTTPResponse &other);
                 ~HTTPResponse();
+                HTTPResponse(const HTTPResponse& other);
+                HTTPResponse& operator=(const HTTPResponse& other);
 
-                //getters
+                // Getters
+                short                                           getStatusCode() const;
+                const std::string&                              getVersion() const;
+                const std::map<std::string, std::string>        &getHeaders() const;
+                const std::vector<uint8_t>&                     getBody() const;
+                
 
-                //setters
+                // Setters
+                void    setStatusCode(short code);
+                void    setVersion(const std::string& version);
+                void    setHeader(std::string name, const std::string& value);
+                void    setBody(const std::vector<uint8_t>& body);
+ 
+
+                // Utils
+                void    appendBody(const std::vector<uint8_t> &data);
+                void    appendBody(const std::string &data);
+                void    clear();
+                void    HTTPResponse::packResponse();
                 
 };
 
 #endif
-
-
-

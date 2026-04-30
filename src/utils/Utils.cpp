@@ -130,16 +130,6 @@ bool fileExist(std::string &_urlFile)
     return (stat(_urlFile.c_str(), &s) == 0);
 }
 
-std::string codeToStr(short &code)
-{
-    std::string str;
-    std::stringstream ss;
-
-    ss << code;
-    ss >> str;
-    return (str);
-}
-
 void fillMapCode(std::map<short, std::string> &_mapCode)
 {
     _mapCode[100] = "Continue";
@@ -197,11 +187,20 @@ void fillMapCode(std::map<short, std::string> &_mapCode)
 
 std::string statusCodeToString(short code)
 {
-    std::map<short, std::string> mapCode;
+    static std::map<short, std::string> mapCode;
     if (mapCode.empty())
         fillMapCode(mapCode);
     std::map<short, std::string>::iterator it = mapCode.find(code);
     if (it != mapCode.end())
         return (it->second);
     return ("Undefined");
+}
+
+std::string extractBoundary(const std::string &contentType)
+{
+    std::string key = "boundary";
+    size_t pos = contentType.find(key);
+    if (pos != std::string::npos)
+        return (contentType.substr(pos + key.length()));
+    return ("");
 }

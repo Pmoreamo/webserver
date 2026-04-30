@@ -10,11 +10,13 @@ public:
 	static std::string	getMimeType(const std::string& extension);
 	static std::string	getExtensionFromPath(const std::string& path);
 
-private:
 	MimeTypes();
 	~MimeTypes();
 	MimeTypes(const MimeTypes& other);
 	MimeTypes& operator=(const MimeTypes& other);
+
+private:
+	
 
 	static std::map<std::string, std::string>	_initMimeMap();
 	static const std::map<std::string, std::string>	_mimeMap;
