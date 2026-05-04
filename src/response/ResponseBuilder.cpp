@@ -2,15 +2,15 @@
 
 Response::Response(const HTTPRequest &req, const HTTPResponse &res) : 
     _full_path(""), 
-    _body(),              // Inicialitza un vector buit 
+    _body(),
     _redirectUrl(""), 
     _cgiFlag(0), 
     _contentLength(0), 
     _autoindex(false),
-    _contentType("text/plain"), // Valor per defecte segur
+    _contentType("text/plain"),
     _contentResponse(""),
     _location(),
-    _request(req),      // Crida al constructor per defecte de LocationConfig
+    _request(req),
     _server(NULL),
     _serverConfig(NULL),
     _response(res)
@@ -25,7 +25,7 @@ Response::Response(const Response &other) :
     _autoindex(other._autoindex),
     _contentResponse(""),
     _location(other._location),
-    _request(other._request),      // Crida al constructor per defecte de LocationConfig
+    _request(other._request),
     _server(NULL),
     _serverConfig(NULL),
     _response(other._response)
@@ -41,7 +41,7 @@ Response    &Response::operator=(const Response &other)
         _cgiFlag = other._cgiFlag;
         _contentLength = other._contentLength;
         _autoindex = other._autoindex;
-        _serverConfig = other._serverConfig;
+        _contentType = other._contentType;
         _location = other._location;
         _server = other._server;
         _serverConfig = other._serverConfig;
@@ -144,18 +144,20 @@ int Response::buildPath(HTTPResponse &res)
             return (1);
         }
         const std::vector<std::string> &indexFile = urlAcces->getIndexFiles();
-        std::string foundIndex = "";
+        bool foundIndex = false;
         for (size_t i = 0; i < indexFile.size(); i++)
         {
             std::string fullIndexPath = _full_path + indexFile[i];
             if (fileExist(fullIndexPath))
             {
-                foundIndex = indexFile[i];
                 _full_path = fullIndexPath;
+                foundIndex = true;
                 break ;
             }
         }
-        if (!indexFile.empty())
+        if (foundIndex)
+            return (0);
+        else
         {
             if (urlAcces->getAutoindex()) 
             {
@@ -211,7 +213,7 @@ int Response::buildBody(HTTPResponse &res)
     std::string method_str = _request.getMethod();
     if (method_str == "GET")
     {
-        if (readFile(res)) // Si falla la lectura, gestionem manualment
+        if (readFile(res))
         {
             res.setStatusCode(404);
             buildErrorBody(res);
@@ -245,6 +247,13 @@ int Response::buildBody(HTTPResponse &res)
         file.close();
         res.setStatusCode(fileExist(_full_path) ? 200 : 201);
     }
+    else if (method_str == "DELETE")
+    {
+        if (std::remove(_full_path.c_str()) != 0)
+            res.setStatusCode(404);
+        else
+            res.setStatusCode(204);
+    }
     _contentLength = _body.size(); 
     if (res.getStatusCode() == 0)
         res.setStatusCode(200);
@@ -270,9 +279,7 @@ int Response::buildHtmlIndex()
     
     directory = opendir(_full_path.c_str());
     if (directory == NULL)
-    {    
         return (1);
-    }
     dirListPage.append("<html>\n<head>\n<title>Index of " + _full_path + "</title>\n");
     dirListPage.append("<style>body{font-family:sans-serif;} table{width:80%; margin:20px auto;} th{text-align:left; border-bottom:1px solid #ccc;}</style>\n");
     dirListPage.append("</head>\n<body>\n");
@@ -347,7 +354,6 @@ void    Response::cutResponse(size_t i)
     _contentResponse = _contentResponse.substr(i);
 }
 
-
 std::string Response::getHttpDate()
 {
     std::string res;
@@ -370,7 +376,12 @@ void Response::setHeaders(HTTPResponse &res)
     if (!_contentType.empty())
         res.setHeader("Content-Type", _contentType);
     else
-        res.setHeader("Content-Type", "text/plain");
+    {
+        size_t dot_pos = _full_path.find_last_of(".");
+        if (dot_pos != std::string::npos)
+            _contentType = _mime.getMimeType(_full_path.substr(dot_pos));
+        res.setHeader("Content-Type", _contentType);
+    }
     if (_request.getHeader("connection") == "keep-alive")
         res.setHeader("connection", "keep-alive");
     short   code = res.getStatusCode();

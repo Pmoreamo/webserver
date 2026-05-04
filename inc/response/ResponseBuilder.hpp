@@ -21,6 +21,7 @@
 #include "../mime/MimeTypes.hpp"
 #include "../CGI/CGI.hpp"
 #include "../utils/Utils.hpp"
+#include <dirent.h>
 
 class Response
 {
