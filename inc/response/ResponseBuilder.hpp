@@ -10,64 +10,68 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef RESPONSE_HPP
-#define RESPONSE_HPP
+#ifndef RESPONSE_BUILDER_HPP
+#define RESPONSE_BUILDER_HPP
 
-#include "../request/HTTPRequest.hpp"
-#include "../request/LocationConfig.hpp"
-#include "../server/Server.hpp"
-#include "../parser/ServerConfig.hpp"
-#include "../response/HTTPResponse.hpp"
-#include "../mime/MimeTypes.hpp"
-#include "../CGI/CGI.hpp"
-#include "../utils/Utils.hpp"
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <map>
+#include <sstream>
+#include <sys/stat.h>
 #include <dirent.h>
+#include <algorithm>
 
-class Response
+#include "HTTPRequest.hpp"
+#include "HTTPResponse.hpp"
+#include "ServerConfig.hpp"
+#include "LocationConfig.hpp"
+#include "MimeTypes.hpp"
+
+class Response 
 {
-   
-        private:
-                std::string             _full_path; //Ruta absoluta/relativa al sistema.
-                std::vector<uint8_t>    _body; //contingut en Vector de bytes (binari pur).
-                std::string             _redirectUrl; //URL de destí (Header Location).
-                int                     _cgiFlag; //flag d'activació.
-                size_t                  _contentLength; //longitud del contingut en bytes.
-                bool                    _autoindex; //Interruptor de per mostrar llistat o nomes 1
-                std::string             _contentType;
-                std::string             _contentResponse;
+    private:
+            // Atributs de control i camins
+            std::string             _full_path;
+            std::string             _redirectUrl;
+            int                     _cgiFlag;
+            size_t                  _contentLength;
+            bool                    _autoindex;
+            std::string             _contentType;
 
-                MimeTypes               _mime;
-                LocationConfig          _location; //copia de Location
-                const HTTPRequest       &_request; //copia de Request
-                const Server            *_server; //punter al server
-                const ServerConfig      *_serverConfig; //punter a la configuracio del server
-                const HTTPResponse       &_response;
+        // Referències i dades de configuració
+            MimeTypes               _mime;
+            LocationConfig          _location;
+            const HTTPRequest&       _request;
+            const ServerConfig*      _serverConfig;
+            HTTPResponse&            _response;
 
-                
+        // Mètodes privats interns (Lògica de decisió)
+            int         buildPath();
+            int         buildBody();
+            void        buildErrorBody();
+            int         buildHtmlIndex();
+            void        setHeaders();
+            int         readFile();
 
-        public:
-                Response(const HTTPRequest &req, const HTTPResponse &res);
-                Response(const Response &src);
-                Response        &operator=(const Response &src);
-                ~Response();
+    public:
+            Response(const HTTPRequest &req, HTTPResponse &res);
+            Response(const Response &other);
+            Response &operator=(const Response &other);
+            ~Response();
 
-                //setters
-                void setMime(const MimeTypes& mime);
-                void setLocation(const LocationConfig& loc);
-                void setServer(const Server* serv);
-                void setServerConfig(const ServerConfig* conf);
+        // Setters de configuració
+            void        setMime(const MimeTypes& mime);
+            void        setLocation(const LocationConfig& loc);
+            void        setServerConfig(const ServerConfig* conf);
 
-                //logica
-                int                     buildPath(HTTPResponse &res);
-                int                     buildBody(HTTPResponse &res);
-                int                     readFile(HTTPResponse &res);
-                void                    buildErrorBody(HTTPResponse &res);
-                void                    setHeaders(HTTPResponse &res);
-                void                    buildResponse(HTTPResponse &res);
-                int                     buildHtmlIndex();
-                void                    cutResponse(size_t i);
-                std::string             getHttpDate();
-           
+        // Mètode principal
+            void        buildResponse();
+
+        // Getters de control per al Server
+            int         getCgiFlag() const;
+            std::string getFullPath() const;
 };
 
 #endif

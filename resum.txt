@@ -1,121 +1,44 @@
-1. Response (Decisió logica)
- és la "intel·ligència" dins de la teva classe Response. La seva feina és agafar la petició i la configuració i decidir el camí.
- Arxiu:  Response.cpp
- Mètodes clau que ja tens: handleTarget() i getLocationMatch().
- Què fa el teu codi: 
-  1.  Busca quina Location coincideix amb la URI.
-  2.  Comprova si és una redirecció (return).
-  3.  Aplica el Root o l'Alias per saber on és el fitxer real al disc.
-  4.  Decideix si la petició s'envia al motor de fitxers o al motor de CGI.
- 
-2. El File Handler (Gestió de Fitxers)
-Aquesta part és la que "toca" el disc dur. El teu codi ja té la base per llegir i escriure, però és on hauràs de posar
-  més hores per fer-lo robust.
-  Arxiu: Response.cpp
-  Mètodes clau que ja tens: buildBody(), readFile() i removeBoundary().
-  La teva responsabilitat:
-    GET: Llegir el fitxer i guardar-lo a _response_body.
-    POST/PUT: Rebre el body de la petició i escriure'l al disc (gestionant el multipart/form-data si cal).
-    DELETE: Esborrar fitxers físicament.Autoindex: Generar l'HTML amb la llista de fitxers si la carpeta no té un index.html.
-3. El CGI Handler (Scripts Externs)Aquesta és la part més complexa tècnicament perquè surt de la teva memòria i 
- executa un programa extern (Python, Bash, etc.).Arxius: CgiHandler.cpp i mètodes de Response.cpp.
-    Mètodes clau: 
-        Response::handleCgi() 
-        CgiHandler::execute()
+Jo faig:
 
- La teva responsabilitat: 
-    Preparar les Variables d'Entorn (Environment Variables) que el script necessita (com QUERY_STRING)
-    Gestionar el Fork i els Pipes per enviar dades al script i llegir el que aquest retorna.Controlar que el CGI no es quedi penjat (timeouts).
+CGIHandler
+ResponseBuilder
+Mime
 
-___________________________________________________________________
+rebo de 2na Persona
+Request
+RequestParserResponse, estructura de dades.
 
-1. El "Path Matching" (Trobar la Location)
-La primera feina del Router és saber a quina part de la configuració pertany la URL de l'usuari.
-Què fer: Has de comparar la URI de la petició amb totes les paths de les Locations que tinguis al fitxer de configuració.
-La regla d'or: S'ha d'agafar el "Longest Prefix Match". Si tens una location / i una /images/, i l'usuari demana /images/logo.png, el Router ha d'escollir /images/.
-
-2. Validació de Mètodes
-Un cop saps en quina Location estàs, el Router ha de comprovar si el mètode HTTP està permès.
-Lògica: Si la petició és un POST però la configuració d'aquella ruta només permet GET, el Router ha de tallar la comunicació immediatament i retornar un 405 Method Not Allowed.
-
-3. Traducció de la Ruta (Physical Path)
-Aquest és el pas on el Router converteix una URL virtual en una adreça real al disc dur del servidor.
-Root vs Alias: * Si la location té un root, concatena: root + URI.
-Si la location té un alias, substitueix la part de la location de la URI pel path de l'alias.
-Exemple: URL /data/file.txt amb root: /var/www → Path real: /var/www/data/file.txt.
-
-4. Gestió de Directoris i l'Index
-Si el path resultant és un directori (comprova-ho amb stat() i S_ISDIR):
-Check Slash: Si la URL no acaba en /, molts servidors fan una redirecció 301 afegint la barra.
-Cerca de l'Index: El Router busca el fitxer index.html (o el que digui la config) dins d'aquest directori.
-Autoindex: Si no hi ha index, el Router mira si l'autoindex està on per decidir si haurà de llistar els fitxers més tard.
-
-5. Decisió Final: Qui ho gestiona?
-El Router posa una "etiqueta" a la petició:
-Si el fitxer acaba en .py, .php, etc. → Marca-ho com a CGI.
-Si és un fitxer normal o un directori amb autoindex → Marca-ho com a FileHandler.
-
-___________________________________________________________________
+rebo de 1a persona
+│ServerConfig
+LocationConfigConfigParser
 
 
-1. Lectura del contingut (El "Body" de la resposta)
-Ara que tens el _path definit i validat, has d'omplir el cos de la resposta segons el que ha decidit el Router:
-Si és un fitxer estàtic: Obres el fitxer en mode binari i en llegeixes el contingut cap a un std::string o un std::vector<char>.
-Si és Autoindex: Crides a una funció que llisti els fitxers del directori i generi un HTML dinàmicament.
-Si és CGI: Ja hauràs cridat a handleCgi, que s'encarrega d'executar l'script i recollir el que aquest escrigui per la sortida estàndard.
+FLUX DE TREBALL PERSONA 3
 
-2. Determinació del Content-Type (MIME Types)
-El navegador necessita saber si el que li envies és una imatge, un PDF o un HTML per saber com mostrar-ho.
-Has de mirar l'extensió del teu _path.
-Necessitaràs un petit mapa o funció que tradueixi .html → text/html, .jpg → image/jpeg, etc.
-
-3. Construcció de les Capçaleres (Headers)
-Has de muntar la "carta de presentació" de la teva resposta HTTP. Les capçaleres imprescindibles són:
-Status Line: HTTP/1.1 200 OK (o el codi que hagis guardat a _code).
-Content-Length: La mida exacta en bytes del body que has llegit.
-Content-Type: El tipus MIME que has determinat al pas anterior.
-Server: El nom del teu servidor (ex: Webserv/1.0).
-Connection: keep-alive o close.
-
-4. Gestió d'Errors (Si _code != 200)
-Si durant el handleTarget has detectat un error (404, 403, 405...), no pots enviar el fitxer. Has de:
-Mirar si a la configuració del Server hi ha una error_page definida per a aquest codi.
-Si hi és, intentar servir aquest fitxer.
-Si no hi és, generar un HTML d'error genèric (ex: <h1>404 Not Found</h1>).
-
-5. Enviament (Send)
-Finalment, s'ajunta tot en un sol string (Headers + línia buida \r\n + Body) i s'envia a través del socket del client amb la funció send().
-
-___________________________________________________________________
-
-1. Configuració i Rutes
-server: L'objecte de referència. Conté les regles del .conf (arrel, límits, errors personalitzats).
-path_to_file: El path absolut. La ruta real al disc on anem a buscar el fitxer (el que obrim amb ifstream).
-
-2. Gestió de Dades (Payload)
-binary_buff_before_res (vector/bytes): El buffer temporal. On muntem la info binària (ex: el llistat de l'Autoindex) abans de tancar la resposta.
-final_cont_of_res (string): El contingut final. El text o HTML definitiu que viatjarà al client. D'aquí traiem el Content-Length.
-exact_bytes_size_res: El comptador. Mida exacta en bytes per no enviar ni un bit de més ni de menys.
-
-3. Control i Sortida
-error_code : L'estat. El codi HTTP (200, 404, 500) que determina si l'operació ha tingut èxit.
-new_location: L'adreça de rebot. Només s'omple si fem una redirecció (301/302).
-full_response_to_send: El paquet final. El string sencer (Header + Body) llest per ser lliurat a la funció send().
-
-4. Lògica de CGI (Executables externos)
-flag_cgi: El flag de mode. Si és true, el servidor deixa de llegir fitxers i executa un script (Python/PHP).
-pipes_cgi_fd[2]: Els tubs (pipes). [1] per enviar dades a l'script i [0] per rebre el resultat.
-size_bytes_cgi_ret: El control de lectura. Quants bytes ens ha escopit el CGI.
-
-5. El comodí
-generator_of_lists: El generador de llistats. Si no hi ha index.html, s'activa per mostrar el directori com una llista de fitxers.
+Rep una Request
+Mira la LocationConfig
+Si es un fitxer usa Utils o FileManager
+SI es CGI usa CGIHandler
+SI es un DELETE, borrar
+Omple a RESPONSE, amb la funcion ResponseBuilder
 
 
 
-Resum ràpid de la "Línia de Muntatge":
-Mires el _server (instruccions).
-Decideixes el _code (nota) i el _target_file (ruta).
-Si és _cgi, uses els _cgi_fd (tubs).
-Si és _auto_index, omples el _body.
-Ho fiques tot al _response_body.
-Ho empaquetes tot a _res i cap al client!
+COMENCAR PER RESPONSE ResponseBuilder
+
+Si vols sobreviure i no quedar-te bloquejat a l'últim minut, comença pel ResponseBuilder (i la lògica de fitxers estàtics).
+El CGI és la part més difícil i "fosca". Si comences per aquí i t'encalles (que passarà, perquè els pipes i els forks són traïdorencs), el teu equip no tindrà res que funcioni. En canvi, si fas primer el ResponseBuilder, en dos dies tindreu un servidor que ja serveix pàgines HTML i fotos.
+Aquí tens el full de ruta recomanat:
+
+1. El "Skeleton" del ResponseBuilder (Prioritat Alta)
+Abans de fer res complicat, crea la infraestructura. El ResponseBuilder ha de ser capaç de:
+-Rebre la Request parsejada.
+-Buscar la ruta al disc (usant la Config).
+-Generar una resposta 200 OK amb un "Hola món" o la 404 si el fitxer no existeix.
+Per què primer? Perquè un cop tinguis això, la Persona 2 ja pot provar si el seu Parser funciona i
+la Persona 1 pot veure si la seva Config s'aplica bé.
+
+2. File Handling (GET / DELETE)
+Un cop el "skeleton" funciona:
+GET: Implementa la lectura de fitxers reals (std::ifstream). Si demanen index.html, llegeix-lo i posa'l al body de la Response.
+DELETE: Afegeix la lògica d'esborrar. És senzill (unlink()) i et donarà la satisfacció de veure que el servidor ja "fa coses" al disc.

@@ -1,392 +1,334 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   ResponseBuilder.cpp                                :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: marvin <marvin@student.42.fr>              +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/05/04 15:14:30 by marvin            #+#    #+#             */
+/*   Updated: 2026/05/04 15:14:30 by marvin           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "ResponseBuilder.hpp"
 
-Response::Response(const HTTPRequest &req, const HTTPResponse &res) : 
+Response::Response(const HTTPRequest &req, HTTPResponse &res) : 
     _full_path(""), 
-    _body(),
     _redirectUrl(""), 
     _cgiFlag(0), 
     _contentLength(0), 
     _autoindex(false),
     _contentType("text/plain"),
-    _contentResponse(""),
     _location(),
     _request(req),
-    _server(NULL),
     _serverConfig(NULL),
     _response(res)
 {}
 
-Response::Response(const Response &other) : 
-    _full_path(other._full_path), 
-    _body(other._body), 
-    _redirectUrl(other._redirectUrl), 
-    _cgiFlag(other._cgiFlag), 
-    _contentLength(other._contentLength),
-    _autoindex(other._autoindex),
-    _contentResponse(""),
-    _location(other._location),
-    _request(other._request),
-    _server(NULL),
-    _serverConfig(NULL),
-    _response(other._response)
-{}
 
-Response    &Response::operator=(const Response &other)
+Response::~Response() {}
+
+//setters
+void Response::setMime(const MimeTypes& mime)
+{ 
+    this->_mime = mime; 
+}
+
+void Response::setLocation(const LocationConfig& loc) 
+{ 
+    this->_location = loc; 
+}
+
+void Response::setServerConfig(const ServerConfig* conf) 
+{ 
+    this->_serverConfig = conf; 
+}
+
+
+//getters
+int         Response::getCgiFlag() const
 {
-    if (this != &other)
+    return (this->_cgiFlag);
+}
+std::string Response::getFullPath() const
+{
+    return (this->_full_path);
+}
+
+
+//utils
+static void findURL(const std::string &urlClient, const std::vector<LocationConfig> &urlLocs, std::string &urlWinner)
+{
+    size_t  longestMatch = 0;
+    for (std::vector<LocationConfig>::const_iterator it = urlLocs.begin(); it != urlLocs.end(); it++)
     {
-        _full_path = other._full_path;
-        _body = other._body;
-        _redirectUrl = other._redirectUrl;
-        _cgiFlag = other._cgiFlag;
-        _contentLength = other._contentLength;
-        _autoindex = other._autoindex;
-        _contentType = other._contentType;
-        _location = other._location;
-        _server = other._server;
-        _serverConfig = other._serverConfig;
+        if (urlClient.compare(0, it->getPath().length(), it->getPath()) == 0) {
+            if (it->getPath() == "/" || urlClient.length() == it->getPath().length() || urlClient[it->getPath().length()] == '/') {
+                if (it->getPath().length() > longestMatch) {
+                    longestMatch = it->getPath().length();
+                    urlWinner = it->getPath();
+                }
+            }
+        }
     }
-    return (*this);
 }
 
-Response::~Response()
+static int  validMethods(const std::string  &methods, const LocationConfig *local, short &code)
 {
-
+    const std::vector<std::string> &method = local->getAllowedMethods();
+    if (method.empty())
+        return (0);
+    for (std::vector<std::string>::const_iterator it = method.begin(); it != method.end(); it++) 
+    {
+        if (*it == methods) 
+        {
+            return (0);
+        }
+    }
+    code = 405;
+    return (1);
 }
 
-void    Response::setMime(const MimeTypes& mime)
+static bool isDirectory(std::string &_urlDirect)
 {
-    this->_mime = mime;
+    struct stat s;
+    if (stat(_urlDirect.c_str(), &s) == 0)
+        return (S_ISDIR(s.st_mode));
+    return (false);
 }
 
-void    Response::setLocation(const LocationConfig& loc)
+static bool fileExist(std::string &_urlFile)
 {
-    this->_location = loc;
+    struct stat s;
+    return (stat(_urlFile.c_str(), &s) == 0);
 }
 
-void    Response::setServer(const Server* serv)
+static std::string extractBoundary(const std::string &contentType)
 {
-    this->_server = serv;
+    std::string key = "boundary";
+    size_t pos = contentType.find(key);
+    if (pos != std::string::npos)
+        return (contentType.substr(pos + key.length()));
+    return ("");
 }
 
-void    Response::setServerConfig(const ServerConfig* conf)
-{
-    this->_serverConfig = conf;
-}
-
-int Response::buildPath(HTTPResponse &res)
+//logica
+int Response::buildPath()
 {
     if (!_serverConfig)
     {
-        res.setStatusCode(500);
+        _response.setStatusCode(500);
         return (1);
     }
     std::string _urlMatch = "";
     findURL(_request.getPath(), _serverConfig->getLocations(), _urlMatch);
     if (_urlMatch.empty()) 
     {
-        res.setStatusCode(404);
+        _response.setStatusCode(404);
         return (1);
     }
-    const LocationConfig *urlAcces = NULL;
     const std::vector<LocationConfig> &locs = _serverConfig->getLocations();
+    const LocationConfig *urlAcces = NULL;
     for (size_t i = 0; i < locs.size(); i++) 
     {
         if (locs[i].getPath() == _urlMatch) 
         {
-            urlAcces = &locs[i];
             _location = locs[i];
+            urlAcces = &_location;
             break;
         }
     }
     if (!urlAcces) 
     {
-        res.setStatusCode(404);
+        _response.setStatusCode(404);
         return (1);
     }
-    short statusCode = res.getStatusCode();
-    if (validMethods(_request.getMethod(), urlAcces, statusCode)) 
+    short currentCode = _response.getStatusCode();
+    if (validMethods(_request.getMethod(), urlAcces, currentCode)) 
     {
+        _response.setStatusCode(currentCode);
         return (1);   
     }
+
     if (_request.getBody().size() > _serverConfig->getClientMaxBodySize()) 
     {
-        res.setStatusCode(413);
+        _response.setStatusCode(413);
         return (1);
     }
     if (urlAcces->getRedirectCode() != 0) 
     {
-        res.setStatusCode(urlAcces->getRedirectCode());
+        _response.setStatusCode(urlAcces->getRedirectCode());
         _redirectUrl = urlAcces->getRedirectUrl();
         return (1);
     }
-    if (urlAcces->getPath().find("cgi-bin") != std::string::npos) 
+    if (urlAcces->getPath().find("cgi-bin") != std::string::npos || !urlAcces->getCgiExtension().empty()) 
     {
         _cgiFlag = 1;
         return (0);
     }
     _full_path = urlAcces->getRoot() + _request.getPath();
-    if (!urlAcces->getCgiExtension().empty()) 
-    {
-        std::string ext = urlAcces->getCgiExtension();
-        if (_full_path.length() >= ext.length() && 
-            _full_path.compare(_full_path.length() - ext.length(), ext.length(), ext) == 0) {
-            _cgiFlag = 1;
-            return (0);
-        }
-    }
     if (isDirectory(_full_path)) 
     {
-        if (_full_path.empty() || _full_path[_full_path.length() - 1] != '/') 
+        if (_full_path[_full_path.length() - 1] != '/') 
         {
-            res.setStatusCode(301);
+            _response.setStatusCode(301);
             _redirectUrl = _request.getPath() + "/";
             return (1);
         }
-        const std::vector<std::string> &indexFile = urlAcces->getIndexFiles();
-        bool foundIndex = false;
-        for (size_t i = 0; i < indexFile.size(); i++)
+        const std::vector<std::string> &indexFiles = urlAcces->getIndexFiles();
+        for (size_t i = 0; i < indexFiles.size(); i++)
         {
-            std::string fullIndexPath = _full_path + indexFile[i];
+            std::string fullIndexPath = _full_path + indexFiles[i];
             if (fileExist(fullIndexPath))
             {
                 _full_path = fullIndexPath;
-                foundIndex = true;
-                break ;
-            }
-        }
-        if (foundIndex)
-            return (0);
-        else
-        {
-            if (urlAcces->getAutoindex()) 
-            {
-                _autoindex = true;
                 return (0);
-            } 
-            else 
-            {
-                res.setStatusCode(403);
-                return (1);
             }
         }
+        if (urlAcces->getAutoindex()) 
+        {
+            _autoindex = true;
+            return (0);
+        } 
+        _response.setStatusCode(403);
+        return (1);
     }
+
     if (!fileExist(_full_path)) 
     {
-        res.setStatusCode(404);
+        _response.setStatusCode(404);
         return (1);
     }
     return (0);
 }
 
-int Response::readFile(HTTPResponse &res)
+int Response::readFile()
 {
-    std::ifstream file(_full_path.c_str(), std::ios::binary | std::ios::ate);
+    std::ifstream file(_full_path.c_str(), std::ios::binary);
     if (!file) 
     {
-        res.setStatusCode(404);
+        _response.setStatusCode(404);
         return (1);
     }   
-    std::streamsize size = file.tellg();
-    file.seekg(0, std::ios::beg);
-    _body.resize(size);
-    if (!file.read(reinterpret_cast<char*>(&_body[0]), size)) 
-    {
-        res.setStatusCode(500);
-        return (1);
-    }
-    _contentLength = _body.size();
+    
+    std::stringstream ss;
+    ss << file.rdbuf();
+    _response.setBody(ss.str());
     return (0);
 }
 
-int Response::buildBody(HTTPResponse &res)
+int Response::buildBody()
 {
-    if (buildPath(res))
+    if (buildPath())
     {
-        buildErrorBody(res);
+        buildErrorBody();
         return (1);
     }
     if (_cgiFlag || _autoindex)
         return (0);
-    if (res.getStatusCode() != 0 && res.getStatusCode() != 200)
-        return (0);
-    std::string method_str = _request.getMethod();
-    if (method_str == "GET")
+    std::string method = _request.getMethod();
+    if (method == "GET")
     {
-        if (readFile(res))
+        if (readFile())
         {
-            res.setStatusCode(404);
-            buildErrorBody(res);
+            buildErrorBody();
             return (1);
         }
     }
-    else if (method_str == "POST" || method_str == "PUT") 
+    else if (method == "POST" || method == "PUT") 
     {
         std::ofstream file(_full_path.c_str(), std::ios::binary);
-        if (!file.is_open()) // Comprovació preventiva en lloc de catch
+        if (!file.is_open()) 
         {
-            res.setStatusCode(500);
-            buildErrorBody(res);
+            _response.setStatusCode(500);
+            buildErrorBody();
             return (1);
         }
         const std::vector<uint8_t>& rawBody = _request.getBody();
-		std::string	contentType = _request.getHeader("Content-Type");
-		bool isMultipart = (contentType.find("multipart/form-data") != std::string::npos);
-		if (isMultipart)
-		{
-			std::string	boundary = extractBoundary(contentType);
-			std::vector<uint8_t> cleanData = removeBoundary(_request.getBody(), boundary);
-			file.write(reinterpret_cast<const char*>(cleanData.data()), cleanData.size());
-		}
-		else
-		{
-			const std::vector<uint8_t> &rawBody = _request.getBody();
-			if (!rawBody.empty())
-				file.write(reinterpret_cast<const char*>(rawBody.data()), rawBody.size());
-		}
+        file.write(reinterpret_cast<const char*>(rawBody.data()), rawBody.size());
         file.close();
-        res.setStatusCode(fileExist(_full_path) ? 200 : 201);
+        
+        _response.setStatusCode(201); // Created
     }
-    else if (method_str == "DELETE")
+    else if (method == "DELETE")
     {
         if (std::remove(_full_path.c_str()) != 0)
-            res.setStatusCode(404);
+            _response.setStatusCode(404);
         else
-            res.setStatusCode(204);
+            _response.setStatusCode(204); // No Content
     }
-    _contentLength = _body.size(); 
-    if (res.getStatusCode() == 0)
-        res.setStatusCode(200);
-    return (0); // Tot ha anat bé
+    if (_response.getStatusCode() == 0)
+        _response.setStatusCode(200);
+    return (0);
 }
 
-void    Response::buildErrorBody(HTTPResponse &res)
+void Response::buildErrorBody()
 {
-    if (_serverConfig && _serverConfig->getErrorPages().count(res.getStatusCode()))
+    int code = _response.getStatusCode();
+    if (_serverConfig && _serverConfig->getErrorPages().count(code))
     {
-        _full_path = _location.getRoot() + _serverConfig->getErrorPages().at(res.getStatusCode());
-        if (readFile(res))
+        _full_path = _location.getRoot() + _serverConfig->getErrorPages().at(code);
+        if (readFile() == 0)
             return ;
     }
-
+    _response = HTTPResponse::buildErrorResponse(code);
 }
 
 int Response::buildHtmlIndex()
 {
-    struct dirent   *entityStruct;
-    DIR             *directory;
-    std::string     dirListPage;
-    
-    directory = opendir(_full_path.c_str());
-    if (directory == NULL)
+    DIR *directory = opendir(_full_path.c_str());
+    if (directory == NULL) 
         return (1);
-    dirListPage.append("<html>\n<head>\n<title>Index of " + _full_path + "</title>\n");
-    dirListPage.append("<style>body{font-family:sans-serif;} table{width:80%; margin:20px auto;} th{text-align:left; border-bottom:1px solid #ccc;}</style>\n");
-    dirListPage.append("</head>\n<body>\n");
-    dirListPage.append("<h1>Index of " + _request.getPath() + "</h1>\n<hr>\n");
-    dirListPage.append("<table>\n<tr><th>File Name</th><th>Last Modification</th><th>File Size</th></tr>\n");
-    struct stat file_stat;
-    std::string file_path;
-    while((entityStruct = readdir(directory)) != NULL)
+    std::ostringstream oss;
+    oss << "<html><head><title>Index of " << _request.getPath() << "</title></head>";
+    oss << "<body><h1>Index of " << _request.getPath() << "</h1><hr><table>";
+    struct dirent *entity;
+    while((entity = readdir(directory)) != NULL)
     {
-        if(std::string(entityStruct->d_name) == ".")
-            continue;
-        file_path = _full_path;
-        if (file_path[file_path.length() - 1] != '/')
-            file_path += "/";
-        file_path += entityStruct->d_name;
-        if (stat(file_path.c_str() , &file_stat) == -1)
-            continue;
-        dirListPage.append("<tr>\n<td>\n");
-        dirListPage.append("<a href=\"");
-        dirListPage.append(entityStruct->d_name);
-        if (S_ISDIR(file_stat.st_mode))
-            dirListPage.append("/");
-        dirListPage.append("\">");
-        dirListPage.append(entityStruct->d_name);
-        if (S_ISDIR(file_stat.st_mode))
-            dirListPage.append("/");
-        dirListPage.append("</a>\n</td>\n<td>\n");
-        dirListPage.append(ctime(&file_stat.st_mtime));
-        dirListPage.append("</td>\n<td>\n");
-        if (!S_ISDIR(file_stat.st_mode))
-        {
-            std::stringstream ss;
-            ss << file_stat.st_size;
-            dirListPage.append(ss.str() + " bytes");
-        }
-        else
-            dirListPage.append("-");
-        dirListPage.append("</td>\n</tr>\n");
+        if(std::string(entity->d_name) == ".") continue;
+        oss << "<tr><td><a href=\"" << entity->d_name << "\">" 
+            << entity->d_name << "</a></td></tr>";
     }
-    dirListPage.append("</table>\n<hr>\n</body>\n</html>\n");
+    oss << "</table><hr></body></html>";
     closedir(directory);
-    _body.clear();
-    _body.insert(_body.begin(), dirListPage.begin(), dirListPage.end());
-    _contentLength = _body.size();
+    _response.setBody(oss.str());
     _contentType = "text/html"; 
     return (0);
 }
 
-void Response::buildResponse(HTTPResponse &res)
+void Response::buildResponse()
 {
-    if (buildBody(res))
-        buildErrorBody(res);
+    if (buildBody())
+        return;
     if (_cgiFlag)
         return;
     if (_autoindex)
     {
         if (buildHtmlIndex())
         {
-            res.setStatusCode(500);
-            buildErrorBody(res);
+            _response.setStatusCode(500);
+            buildErrorBody();
         }
         else
-            res.setStatusCode(200);
+            _response.setStatusCode(200);
     }
-    setHeaders(res);
-    if ((_request.getMethod() == "GET" || res.getStatusCode() != 200))
-        _contentResponse.append(_body.begin(), _body.end());
+    setHeaders();
 }  
 
-void    Response::cutResponse(size_t i)
+void Response::setHeaders()
 {
-    _contentResponse = _contentResponse.substr(i);
-}
-
-std::string Response::getHttpDate()
-{
-    std::string res;
-    char buffer[100];
-    time_t now = time (0);
-    struct tm *tm = gmtime(&now);
-    strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", tm);
-    res = buffer;
-    return (res);
-}
-
-void Response::setHeaders(HTTPResponse &res)
-{
-    res.setVersion("HTTP/1.1");
-    res.setHeader("Date", getHttpDate());
-    res.setHeader("Server", "Webserv/42");
-    std::stringstream ss;
-    ss << _body.size();
-    res.setHeader("Content-Length", ss.str());
-    if (!_contentType.empty())
-        res.setHeader("Content-Type", _contentType);
-    else
+    if (_contentType == "text/plain" && !_full_path.empty())
     {
         size_t dot_pos = _full_path.find_last_of(".");
         if (dot_pos != std::string::npos)
             _contentType = _mime.getMimeType(_full_path.substr(dot_pos));
-        res.setHeader("Content-Type", _contentType);
     }
+    _response.setHeader("Content-Type", _contentType);
     if (_request.getHeader("connection") == "keep-alive")
-        res.setHeader("connection", "keep-alive");
-    short   code = res.getStatusCode();
+        _response.setHeader("Connection", "keep-alive");
+    else
+        _response.setHeader("Connection", "close");
+    int code = _response.getStatusCode();
     if (code >= 300 && code < 400 && !_redirectUrl.empty())
-    {
-        res.setHeader("Location", _redirectUrl);
-    }
-} 
+        _response.setHeader("Location", _redirectUrl);
+}

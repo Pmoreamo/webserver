@@ -12,119 +12,147 @@
 
 #include "HTTPResponse.hpp"
 
-HTTPResponse::HTTPResponse() :
-    _statusCode(0), 
-    _httpVersion(""), 
-    _headers("",""),
-    _body(0),
-    _fullResponse("")
+HTTPResponse::HTTPResponse()
+	: _statusCode(200), _statusMessage("OK")
 {
-
+	_setDateHeader();
+	_setServerHeader();
 }
 
-HTTPResponse::HTTPResponse(const HTTPResponse &other) :
-    _statusCode(other._statusCode), 
-    _httpVersion(other._httpVersion), 
-    _headers(other._headers),
-    _body(other._body),
-    _fullResponse(other._fullResponse)
+HTTPResponse::HTTPResponse(int statusCode)
+	: _statusCode(statusCode),
+	  _statusMessage(HTTPStatus::getReasonPhrase(statusCode))
 {
-
-}
-
-HTTPResponse    &HTTPResponse::operator=(const HTTPResponse &other)
-{
-    if (this != &other)
-    {
-        _statusCode = other._statusCode; 
-        _httpVersion = other._httpVersion; 
-        _headers = other._headers;
-        _body = other._body;
-        _fullResponse = other._fullResponse;
-    }
-    return (*this);
+	_setDateHeader();
+	_setServerHeader();
 }
 
 HTTPResponse::~HTTPResponse()
 {
-
 }
 
-//getters
-short   HTTPResponse::getStatusCode() const
+HTTPResponse::HTTPResponse(const HTTPResponse& other)
+	: _statusCode(other._statusCode),
+	  _statusMessage(other._statusMessage),
+	  _headers(other._headers),
+	  _body(other._body)
 {
-    return (this->_statusCode);
 }
 
-const std::string   &HTTPResponse::getVersion() const
+HTTPResponse& HTTPResponse::operator=(const HTTPResponse& other)
 {
-    return (this->_httpVersion);
+	if (this != &other)
+	{
+		_statusCode = other._statusCode;
+		_statusMessage = other._statusMessage;
+		_headers = other._headers;
+		_body = other._body;
+	}
+	return *this;
 }
 
-const std::map<std::string, std::string>    &HTTPResponse::getHeaders() const
+// Setters
+
+void HTTPResponse::setStatusCode(int code)
 {
-    return (this->_headers);
+	_statusCode = code;
+	_statusMessage = HTTPStatus::getReasonPhrase(code);
 }
 
-const std::vector<uint8_t>    &HTTPResponse::getBody() const
+void HTTPResponse::setHeader(const std::string& name, const std::string& value)
 {
-    return (this->_body);
+	_headers[name] = value;
 }
 
-
-//setters
-void    HTTPResponse::setStatusCode(short code)
+void HTTPResponse::setBody(const std::string& body)
 {
-    this->_statusCode = code;
+	_body = body;
+	std::ostringstream oss;
+	oss << _body.size();
+	_headers["Content-Length"] = oss.str();
 }
 
-void    HTTPResponse::setVersion(const std::string& version)
+// Getters
+
+int HTTPResponse::getStatusCode() const { return _statusCode; }
+const std::string& HTTPResponse::getBody() const { return _body; }
+
+// Serialization
+
+std::string HTTPResponse::serialize() const
 {
-    this->_httpVersion = version;
+	std::ostringstream oss;
+
+	oss << "HTTP/1.1 " << _statusCode << " " << _statusMessage << "\r\n";
+	for (std::map<std::string, std::string>::const_iterator it = _headers.begin();
+		 it != _headers.end(); ++it)
+	{
+		oss << it->first << ": " << it->second << "\r\n";
+	}
+	oss << "\r\n";
+	if (!_body.empty())
+		oss << _body;
+
+	return oss.str();
 }
 
-void    HTTPResponse::setHeader(std::string name, const std::string& value)
+// Factory methods
+
+HTTPResponse HTTPResponse::buildErrorResponse(int code)
 {
-    this->_headers[name] = value;
+	std::string message = HTTPStatus::getReasonPhrase(code);
+	std::string body = _generateErrorPage(code, message);
+
+	HTTPResponse response(code);
+	response.setHeader("Content-Type", "text/html");
+	response.setBody(body);
+	response.setHeader("Connection", "close");
+	return response;
 }
 
-void    HTTPResponse::setBody(const std::vector<uint8_t>& body)
+HTTPResponse HTTPResponse::buildErrorResponse(int code, const std::string& customBody)
 {
-    this->_body = body;
+	HTTPResponse response(code);
+	response.setHeader("Content-Type", "text/html");
+	response.setBody(customBody);
+	response.setHeader("Connection", "close");
+	return response;
 }
 
-//utils
-void    HTTPResponse::appendBody(const std::vector<uint8_t> &data)
+HTTPResponse HTTPResponse::buildRedirectResponse(int code, const std::string& location)
 {
-    _body.insert(_body.end(), data.begin(), data.end());
+	HTTPResponse response(code);
+	response.setHeader("Location", location);
+	response.setBody("");
+	return response;
 }
 
-void    HTTPResponse::appendBody(const std::string &data)
+// Private helpers
+
+void HTTPResponse::_setDateHeader()
 {
-    _body.insert(_body.end(), data.begin(), data.end());
+	char buf[64];
+	time_t now = time(NULL);
+	struct tm* gmt = gmtime(&now);
+
+	strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", gmt);
+	_headers["Date"] = buf;
 }
 
-void    HTTPResponse::clear()
+void HTTPResponse::_setServerHeader()
 {
-    _statusCode = 0;
-    _httpVersion.clear();
-    _headers.clear();
-    _body.clear();
-    _fullResponse.clear();
+	_headers["Server"] = "webserv/1.0";
 }
 
-void HTTPResponse::packResponse() 
+std::string HTTPResponse::_generateErrorPage(int code, const std::string& message)
 {
-    std::stringstream ss;
-    ss << _httpVersion << " " << _statusCode << " " << statusCodeToString(_statusCode) << "\r\n";
-    for (std::map<std::string, std::string>::iterator it = _headers.begin(); it != _headers.end(); ++it) 
-    {
-        ss << it->first << ": " << it->second << "\r\n";
-    }
-    ss << "\r\n";
-    _fullResponse = ss.str();
-    if (!_body.empty()) 
-    {
-        _fullResponse.append(reinterpret_cast<const char*>(_body.data()), _body.size());
-    }
+	std::ostringstream oss;
+	oss << "<html>\r\n"
+		<< "<head><title>" << code << " " << message << "</title></head>\r\n"
+		<< "<body>\r\n"
+		<< "<center><h1>" << code << " " << message << "</h1></center>\r\n"
+		<< "<hr><center>webserv/1.0</center>\r\n"
+		<< "</body>\r\n"
+		<< "</html>\r\n";
+	return oss.str();
 }

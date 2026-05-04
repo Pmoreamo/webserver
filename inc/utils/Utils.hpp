@@ -1,5 +1,5 @@
 #ifndef UTILS_HPP
-# define UTILS_HPP
+#define UTILS_HPP
 
 #include <string>
 #include <string>
@@ -10,7 +10,7 @@
 #include "../inc/server/Server.hpp"
 #include "../inc/parser/ServerConfig.hpp"
 #include "../inc/mime/MimeTypes.hpp"
-#include "../inc/CGI/CGI.hpp"
+#include "../inc/CGI/CGIData.hpp"
 
 
 void            RemoveComments(std::string &fullLine);
@@ -30,12 +30,12 @@ std::string     statusCodeToString(short code);
 //utils response
 void                    findURL(const std::string &urlClient, const std::vector<LocationConfig> &urlLocs, std::string &urlWinner);
 int                     validMethods(const std::string  &methods, const LocationConfig *local, short &code);
+void                    replaceAlias(LocationConfig &loc, HTTPRequest &req, std::string &target);
 bool                    isDirectory(std::string &_urlDirect);
 bool                    fileExist(std::string &_urlFile);
-void                    fillMapCode(std::map<short, std::string> &_mapCode);
-std::string             statusCodeToString(short code);
 std::vector<uint8_t>    removeBoundary(const std::vector<uint8_t>&_body, const std::string &boundary);
 std::string             extractBoundary(const std::string &boundary);
+unsigned int            fromHexToDec(const std::string &nb);
 
 
 #endif

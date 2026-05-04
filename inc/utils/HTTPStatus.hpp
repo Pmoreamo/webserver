@@ -9,8 +9,7 @@ class HTTPStatus
 public:
 	static std::string getReasonPhrase(int code);
 	static bool        isValidCode(int code);
-
-private:
+	
 	HTTPStatus();
 	~HTTPStatus();
 	HTTPStatus(const HTTPStatus& other);
